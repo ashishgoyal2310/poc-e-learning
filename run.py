@@ -38,7 +38,8 @@ def init_app():
 
         return app
 
+app = init_app()
+
 # Required because app is imported in other modules
 if __name__== '__main__':
-    app = init_app()
     app.run()
