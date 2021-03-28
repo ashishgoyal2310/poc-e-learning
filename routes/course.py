@@ -1,5 +1,6 @@
 """Routes for the course resource.
 """
+import json
 
 from flask import current_app as app
 from flask import request, redirect, render_template, make_response, jsonify
@@ -120,6 +121,34 @@ def create_course():
     1. Bonus points for validating the POST body fields
     """
     # YOUR CODE HERE
+    try:
+        request_data = json.loads(request.data)
+    except Exception as exc:
+        data = {"messge": "Invalid request data."}
+        return make_response(jsonify(data), 400)
+
+    course_kwargs = {
+        'description': request_data.get('description', ''),
+        'image_path': request_data.get('image_path', ''),
+        'on_discount': True if request_data.get('on_discount', '') == 'true' else False,
+        'discount_price': request_data.get('discount_price', ''),
+        'price': request_data.get('price', ''),
+        'title': request_data.get('title', ''),
+        'date_created': dt.now(),
+        'date_updated': dt.now(),
+    }
+
+    new_course = Course(**course_kwargs)
+    try:
+        db.session.add(new_course)
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        data = {"messge": "Invalid request data. {}".format(exc)}
+        return make_response(jsonify(data), 400)
+
+    data = {"data": new_course.as_json()}
+    return make_response(jsonify(data), 400)
 
 
 @app.route("/course/<int:id>", methods=['PUT'])
