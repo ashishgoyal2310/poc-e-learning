@@ -37,6 +37,11 @@ def get_course(id):
     Challenge notes:
     -------------------------------------------------------------------------
     1. Bonus points for not using a linear scan on your data structure.
+
+    -------------------------------------------------------------------------
+    Curl Request: ## Get course by id
+    -------------------------------------------------------------------------
+    curl "http://localhost:5000/course/101"
     """
     # YOUR CODE HERE
     course_obj = db.session.query(Course).filter_by(id=id).first()
@@ -66,13 +71,18 @@ def get_courses():
     """
     -------------------------------------------------------------------------
     Challenge notes:
-    ------------------------------------------------------------------------- 
+    -------------------------------------------------------------------------
     1. Bonus points for not using a linear scan, on your data structure, if
        title-words is supplied
     2. Bonus points for returning resulted sorted by the number of words which
        matched, if title-words is supplied.
     3. Bonus points for including performance data on the API, in terms of
        requests/second.
+
+    -------------------------------------------------------------------------
+    Curl Request: ## Get default page of courses
+    -------------------------------------------------------------------------
+    curl "http://localhost:5000/course?page-size=5"
     """
     # YOUR CODE HERE
     page_number = request.args.get('page-number', '1')
@@ -119,6 +129,20 @@ def create_course():
     Challenge notes:
     -------------------------------------------------------------------------
     1. Bonus points for validating the POST body fields
+
+    -------------------------------------------------------------------------
+    Curl Request: ## Add course
+    -------------------------------------------------------------------------
+    curl -X "POST" "http://localhost:5000/course" \
+        -H 'Content-Type: application/json' \
+        -d $'{
+    "description": "This is a brand new course",
+    "discount_price": 5,
+    "title": "Brand new course",
+    "price": 25,
+    "image_path": "images/some/path/foo.jpg",
+    "on_discount": false
+    }'
     """
     # YOUR CODE HERE
     try:
@@ -166,8 +190,47 @@ def update_course(id):
     1. Bonus points for validating the PUT body fields, including checking
        against the id in the URL
 
+    -------------------------------------------------------------------------
+    Challenge notes: ## Update course
+    -------------------------------------------------------------------------
+    curl -X "PUT" "http://localhost:5000/course/101" \
+        -H 'Content-Type: application/json' \
+        -d $'{
+    "image_path": "images/some/path/foo.jpg",
+    "discount_price": 5,
+    "id": 101,
+    "price": 25,
+    "title": "Blah blah blah",
+    "on_discount": false,
+    "description": "New description"
+    }'
     """
     # YOUR CODE HERE
+    course_obj = db.session.query(Course).filter_by(id=id).first()
+    if not course_obj:
+        data = {"messge": "Course {} does not exist".format(id)}
+        return make_response(jsonify(data), 404)
+
+    try:
+        request_data = json.loads(request.data)
+    except Exception as exc:
+        data = {"messge": "Invalid request data."}
+        return make_response(jsonify(data), 400)
+
+    for field in {'description','image_path','on_discount','discount_price','price','title'}:
+        value = request_data.get(field, getattr(course_obj, field, ''))
+        setattr(course_obj, field, value)
+    course_obj.date_updated = dt.now()
+
+    try:
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        data = {"messge": "Invalid request data. {}".format(exc)}
+        return make_response(jsonify(data), 400)
+
+    data = {"data": course_obj.as_json()}
+    return make_response(jsonify(data), 400)
 
 
 @app.route("/course/<int:id>", methods=['DELETE'])
@@ -180,6 +243,25 @@ def delete_course(id):
     Challenge notes:
     -------------------------------------------------------------------------
     None
+
+    -------------------------------------------------------------------------
+    Curl Request: ## Delete course by id
+    -------------------------------------------------------------------------
+    curl -X "DELETE" "http://localhost:5000/course/101"
     """
     # YOUR CODE HERE
+    course_obj = db.session.query(Course).filter_by(id=id).first()
+    if not course_obj:
+        data = {"messge": "Course {} does not exist".format(id)}
+        return make_response(jsonify(data), 404)
 
+    try:
+        db.session.delete(course_obj)
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        data = {"messge": "Invalid request data. {}".format(exc)}
+        return make_response(jsonify(data), 400)
+
+    data = {"message": "The specified course was deleted"}
+    return make_response(jsonify(data), 400)
